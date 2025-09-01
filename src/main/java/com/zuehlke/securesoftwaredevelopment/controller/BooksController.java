@@ -5,6 +5,7 @@ import com.zuehlke.securesoftwaredevelopment.domain.*;
 import com.zuehlke.securesoftwaredevelopment.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -40,24 +41,28 @@ public class BooksController {
     }
 
     @GetMapping("/")
+    @PreAuthorize("hasAuthority('VIEW_BOOK_LIST')")
     public String showSearch(Model model) {
         model.addAttribute("books", bookRepository.getAll());
         return "books";
     }
 
     @GetMapping("/create-form")
+    @PreAuthorize("hasAuthority('CREATE_BOOK')")
     public String CreateForm(Model model) {
         model.addAttribute("tags", tagRepository.getAll());
         return "create-form";
     }
 
     @GetMapping(value = "/api/books/search", produces = "application/json")
+    @PreAuthorize("hasAuthority('VIEW_BOOK_LIST')")
     @ResponseBody
     public List<Book> search(@RequestParam("query") String query) throws SQLException {
         return bookRepository.search(query);
     }
 
     @GetMapping("/books")
+    @PreAuthorize("hasAuthority('VIEW_BOOK_LIST')")
     public String showBook(@RequestParam(name = "id", required = false) String id, Model model, Authentication authentication) {
         if (id == null) {
             model.addAttribute("books", bookRepository.getAll());
@@ -93,6 +98,7 @@ public class BooksController {
     }
 
     @PostMapping("/books")
+    @PreAuthorize("hasAuthority('CREATE_BOOK')")
     public String createBook(NewBook newBook) throws SQLException {
         List<Tag> tagList = this.tagRepository.getAll();
         List<Tag> tagsToInsert = newBook.getTags().stream().map(tagId -> tagList.stream().filter(tag -> tag.getId() == tagId).findFirst().get()).collect(Collectors.toList());
@@ -101,6 +107,7 @@ public class BooksController {
     }
 
     @GetMapping("/buy-book/{id}")
+    @PreAuthorize("hasAuthority('BUY_BOOK')")
     public String showBuyBook(
             @PathVariable("id") int id,
             @RequestParam(required = false) boolean addressError,
@@ -121,6 +128,7 @@ public class BooksController {
     }
 
     @PostMapping("/buy-book/{id}")
+    @PreAuthorize("hasAuthority('BUY_BOOK')")
     public String buyBook(@PathVariable("id") int id, String address, String voucher) {
         String voucherUsed = "";
         

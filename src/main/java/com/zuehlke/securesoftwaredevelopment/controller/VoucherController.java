@@ -8,6 +8,7 @@ import com.zuehlke.securesoftwaredevelopment.repository.RatingRepository;
 import com.zuehlke.securesoftwaredevelopment.repository.VoucherRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -31,6 +32,7 @@ public class VoucherController {
     }
 
     @GetMapping("/new-voucher")
+    @PreAuthorize("hasAuthority('NEW_VOUCHER')")
     public String showAddVoucher(Model model) {
         List<Voucher> voucherList = voucherRepository.getAll();
         model.addAttribute("vouchers", voucherList);
@@ -38,6 +40,7 @@ public class VoucherController {
     }
 
     @PostMapping("/new-voucher")
+    @PreAuthorize("hasAuthority('NEW_VOUCHER')")
     public String addVoucher(@RequestParam("value") int value,
                              @RequestParam("code") String code) {
         // Validate input parameters
