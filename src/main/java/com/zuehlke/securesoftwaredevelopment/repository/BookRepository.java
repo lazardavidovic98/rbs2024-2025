@@ -17,7 +17,7 @@ import java.util.List;
 public class BookRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(BookRepository.class);
-    private static final AuditLogger auditLogger = AuditLogger.getAuditLogger(BookRepository.class);
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(BookRepository.class);
 
     private DataSource dataSource;
 
@@ -37,7 +37,7 @@ public class BookRepository {
                 bookList.add(book);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to get all books !", e);
         }
         return bookList;
     }
@@ -83,7 +83,7 @@ public class BookRepository {
                 return book;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to get book {}", bookId, e);
         }
 
         return null;
@@ -112,12 +112,14 @@ public class BookRepository {
                         statement2.setInt(2, tag.getId());
                         statement2.executeUpdate();
                     } catch (SQLException e) {
-                        e.printStackTrace();
+                        LOG.warn("Error assigning tag {} to book {}: {}", tag.getId(), finalId, e.getMessage());
                     }
                 });
+                
+                AUDIT_LOGGER.audit("Successfully created book '" + book.getName() + "' with ID " + finalId);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to create a new book with title {}", book.getName(), e);
         }
         return id;
     }
@@ -134,8 +136,10 @@ public class BookRepository {
             statement.executeUpdate(query2);
             statement.executeUpdate(query3);
             statement.executeUpdate(query4);
+            
+            AUDIT_LOGGER.audit("Successfully deleted book with ID " + bookId);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to delete a book {}", bookId, e);
         }
     }
 

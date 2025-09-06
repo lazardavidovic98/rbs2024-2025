@@ -1,5 +1,7 @@
 package com.zuehlke.securesoftwaredevelopment.repository;
 
+import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
+import com.zuehlke.securesoftwaredevelopment.config.Entity;
 import com.zuehlke.securesoftwaredevelopment.domain.Comment;
 import com.zuehlke.securesoftwaredevelopment.domain.Rating;
 import org.slf4j.Logger;
@@ -15,7 +17,7 @@ import java.util.List;
 public class RatingRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(RatingRepository.class);
-
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(RatingRepository.class);
 
     private DataSource dataSource;
 
@@ -33,20 +35,30 @@ public class RatingRepository {
              ResultSet rs = statement.executeQuery(query)
         ) {
             if (rs.next()) {
+                Rating ratingFromDb = new Rating(rs.getInt(1), rs.getInt(2), rs.getInt(3));
                 PreparedStatement preparedStatement = connection.prepareStatement(query2);
                 preparedStatement.setInt(1, rating.getRating());
                 preparedStatement.setInt(2, rating.getBookId());
                 preparedStatement.setInt(3, rating.getUserId());
                 preparedStatement.executeUpdate();
+
+                AUDIT_LOGGER.auditChange(new Entity(
+                    "rating.update",
+                    String.valueOf(rating.getBookId()),
+                    "bookId=" + ratingFromDb.getBookId() + ";userId=" + ratingFromDb.getUserId() + ";rating=" + ratingFromDb.getRating(),
+                    "bookId=" + rating.getBookId() + ";userId=" + rating.getUserId() + ";rating=" + rating.getRating()
+                ));
             } else {
                 PreparedStatement preparedStatement = connection.prepareStatement(query3);
                 preparedStatement.setInt(1, rating.getBookId());
                 preparedStatement.setInt(2, rating.getUserId());
                 preparedStatement.setInt(3, rating.getRating());
                 preparedStatement.executeUpdate();
+
+                AUDIT_LOGGER.audit("Successfully created rating for book: " + rating.getBookId());
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to create or update rating for book {}", rating.getBookId(), e);
         }
     }
 
@@ -60,7 +72,7 @@ public class RatingRepository {
                 ratingList.add(new Rating(rs.getInt(1), rs.getInt(2), rs.getInt(3)));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to get all ratings for book {}", bookId, e);
         }
         return ratingList;
     }

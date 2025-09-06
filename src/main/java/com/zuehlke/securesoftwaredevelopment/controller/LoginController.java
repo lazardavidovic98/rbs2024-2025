@@ -3,8 +3,11 @@ package com.zuehlke.securesoftwaredevelopment.controller;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
+import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
 import com.zuehlke.securesoftwaredevelopment.domain.HashedUser;
 import com.zuehlke.securesoftwaredevelopment.repository.HashedUserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -15,6 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class LoginController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LoginController.class);
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(LoginController.class);
 
     private final HashedUserRepository repository;
 
@@ -35,10 +41,12 @@ public class LoginController {
         model.addAttribute("totpKey", key.getKey());
 
         // Used for QR Code
-        final HashedUser user = (HashedUser) authentication.getPrincipal();;
+        final HashedUser user = (HashedUser) authentication.getPrincipal();
         String totpUrl = GoogleAuthenticatorQRGenerator.getOtpAuthTotpURL("Book Shop", user.getUsername(), key);
         model.addAttribute("totpUrl", totpUrl);
 
+        LOG.info("TOTP registration page accessed by user: {}", user.getUsername());
+        
         return "register-totp";
     }
 
@@ -47,6 +55,10 @@ public class LoginController {
         final HashedUser user = (HashedUser) authentication.getPrincipal();
         repository.saveTotpKey(user.getUsername(), totpKey);
         model.addAttribute("registered", true);
+        
+        AUDIT_LOGGER.audit("TOTP key registered for user: " + user.getUsername());
+        LOG.info("TOTP registration completed for user: {}", user.getUsername());
+        
         return "register-totp";
     }
 }

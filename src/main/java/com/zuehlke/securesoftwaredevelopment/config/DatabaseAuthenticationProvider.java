@@ -20,6 +20,8 @@ import java.util.List;
 @Component
 public class DatabaseAuthenticationProvider implements AuthenticationProvider {
 
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(DatabaseAuthenticationProvider.class);
+    
     private final UserRepository userRepository;
     private final PermissionService permissionService;
 
@@ -42,9 +44,11 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
         if (success) {
             User user = userRepository.findUser(username);
             List<GrantedAuthority> grantedAuthorities = getGrantedAuthorities(user);
+            AUDIT_LOGGER.audit("User with username: " + username + " - successfully logged in.");
             return new UsernamePasswordAuthenticationToken(user, password, grantedAuthorities);
         }
 
+        AUDIT_LOGGER.audit("Login failed for user with username: " + username);
         throw new BadCredentialsException(String.format(PASSWORD_WRONG_MESSAGE, username, password));
     }
 

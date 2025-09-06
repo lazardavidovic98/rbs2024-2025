@@ -16,7 +16,7 @@ import java.util.List;
 public class PersonRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(PersonRepository.class);
-    private static final AuditLogger auditLogger = AuditLogger.getAuditLogger(PersonRepository.class);
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(PersonRepository.class);
 
     private DataSource dataSource;
 
@@ -34,7 +34,7 @@ public class PersonRepository {
                 personList.add(createPersonFromResultSet(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error retrieving all persons: {}", e.getMessage());
         }
         return personList;
     }
@@ -62,7 +62,7 @@ public class PersonRepository {
                 return createPersonFromResultSet(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error retrieving person with ID {}: {}", personId, e.getMessage());
         }
 
         return null;
@@ -74,8 +74,9 @@ public class PersonRepository {
              Statement statement = connection.createStatement();
         ) {
             statement.executeUpdate(query);
+            AUDIT_LOGGER.audit("Successfully deleted person with ID " + personId);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error deleting person with ID {}: {}", personId, e.getMessage());
         }
     }
 
@@ -99,8 +100,15 @@ public class PersonRepository {
             statement.setString(1, firstName);
             statement.setString(2, email);
             statement.executeUpdate();
+
+            AUDIT_LOGGER.auditChange(new Entity(
+                "person.update",
+                personUpdate.getId(),
+                "firstName=" + personFromDb.getFirstName() + ";lastName=" + personFromDb.getLastName() + ";email=" + personFromDb.getEmail(),
+                "firstName=" + firstName + ";lastName=" + personUpdate.getLastName() + ";email=" + email
+            ));
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to update a person {}", personUpdate.getId(), e);
         }
     }
 }

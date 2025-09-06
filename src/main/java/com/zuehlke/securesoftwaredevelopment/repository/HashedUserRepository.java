@@ -31,7 +31,7 @@ public class HashedUserRepository {
                 return new HashedUser(username, passwordHash, salt, totpKey);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error retrieving user {}: {}", username, e.getMessage());
         }
         return null;
     }
@@ -45,7 +45,7 @@ public class HashedUserRepository {
 
             statement.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error saving TOTP key for user {}: {}", username, e.getMessage());
         }
     }
 }

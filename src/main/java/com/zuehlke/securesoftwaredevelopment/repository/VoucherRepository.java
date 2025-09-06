@@ -16,7 +16,7 @@ import java.util.List;
 public class VoucherRepository {
 
     private static final Logger LOG = LoggerFactory.getLogger(VoucherRepository.class);
-    private static final AuditLogger auditLogger = AuditLogger.getAuditLogger(VoucherRepository.class);
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(VoucherRepository.class);
 
     private DataSource dataSource;
 
@@ -36,8 +36,10 @@ public class VoucherRepository {
             statement.setString(1, code);
             statement.setInt(2, value);
             statement.executeUpdate();
+            
+            AUDIT_LOGGER.audit("Successfully created voucher with code '" + code + "' and value " + value);
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to create voucher with code {}", code, e);
         }
     }
 
@@ -55,7 +57,7 @@ public class VoucherRepository {
                 return true;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error checking for existence of voucher {}: {}", voucher, e.getMessage());
         }
         return false;
     }
@@ -82,7 +84,7 @@ public class VoucherRepository {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error verifying allocation of voucher {} to user with ID {}: {}", voucher, id, e.getMessage());
         }
         return false;
     }
@@ -98,8 +100,10 @@ public class VoucherRepository {
              PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, voucher);
             statement.executeUpdate();
+            
+            AUDIT_LOGGER.audit("Successfully deleted voucher with code '" + voucher + "'");
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Failed to delete voucher with code {}", voucher, e);
         }
     }
 
@@ -113,7 +117,7 @@ public class VoucherRepository {
                 vouchers.add(new Voucher(rs.getInt(1), rs.getString(2), rs.getInt(3)));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOG.warn("Error retrieving all vouchers: {}", e.getMessage());
         }
         return vouchers;
     }
