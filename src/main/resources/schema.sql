@@ -1,113 +1,114 @@
-drop table if exists users;
-drop table if exists person;
-drop table if exists book;
-drop table if exists comments;
-drop table if exists tags;
-drop table if exists voucher;
-drop table if exists voucher_to_user;
-drop table if exists book_to_tag;
-drop table if exists ratings;
-drop table if exists roles;
-drop table if exists permissions;
-drop table if exists user_to_roles;
-drop table if exists role_to_permissions;
+DROP TABLE IF EXISTS role_to_permissions;
+DROP TABLE IF EXISTS user_to_roles;
+DROP TABLE IF EXISTS permissions;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS ratings;
+DROP TABLE IF EXISTS book_to_tag;
+DROP TABLE IF EXISTS voucher;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS book;
+DROP TABLE IF EXISTS persons;
+DROP TABLE IF EXISTS users;
 
-
-create table users
+CREATE TABLE users
 (
-    id       int          NOT NULL AUTO_INCREMENT,
-    username varchar(255) NOT NULL,
-    password varchar(255) NOT NULL,
-    PRIMARY KEY (ID)
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    CONSTRAINT uq_users_username UNIQUE (username)
 );
 
-create table hashedUsers
+-- One profile per user account, sharing the same id
+CREATE TABLE persons
 (
-    id           int          NOT NULL AUTO_INCREMENT,
-    username     varchar(255) not null,
-    passwordHash varchar(64)  not null,
-    salt         varchar(64)  not null,
-    totpKey      varchar(255) null,
-    PRIMARY KEY (ID)
+    id        INT PRIMARY KEY,
+    firstName VARCHAR(255) NOT NULL,
+    lastName  VARCHAR(255) NOT NULL,
+    email     VARCHAR(255) NOT NULL,
+    CONSTRAINT fk_persons_user FOREIGN KEY (id) REFERENCES users (id) ON DELETE CASCADE
 );
 
-create table persons
+CREATE TABLE book
 (
-    id        int          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    firstName varchar(255) NOT NULL,
-    lastName  varchar(255) NOT NULL,
-    email     varchar(255) NOT NULL,
-    PRIMARY KEY (ID)
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(255)  NOT NULL,
+    author      VARCHAR(255)  NOT NULL,
+    description VARCHAR(1500) NOT NULL,
+    price       DOUBLE        NOT NULL
 );
 
-create table book
+CREATE TABLE tags
 (
-    id          int           NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name        varchar(255)  NOT NULL,
-    author      varchar(255)  NOT NULL,
-    description varchar(1500) NOT NULL,
-    price       double        NOT NULL,
-    PRIMARY KEY (ID)
+    id   INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
-create table tags
+CREATE TABLE voucher
 (
-    id   int          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name varchar(255) NOT NULL,
-    PRIMARY KEY (ID)
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    code     VARCHAR(255) NOT NULL,
+    discount INT          NOT NULL,
+    CONSTRAINT uq_voucher_code UNIQUE (code),
+    CONSTRAINT ck_voucher_discount CHECK (discount BETWEEN 1 AND 95)
 );
 
-create table voucher
+CREATE TABLE book_to_tag
 (
-    id    int          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    code  varchar(255) NOT NULL,
-    value int          NOT NULL
+    bookId INT NOT NULL,
+    tagId  INT NOT NULL,
+    PRIMARY KEY (bookId, tagId),
+    CONSTRAINT fk_book_to_tag_book FOREIGN KEY (bookId) REFERENCES book (id) ON DELETE CASCADE,
+    CONSTRAINT fk_book_to_tag_tag FOREIGN KEY (tagId) REFERENCES tags (id) ON DELETE CASCADE
 );
 
-create table book_to_tag
+CREATE TABLE ratings
 (
-    bookId int NOT NULL,
-    tagId  int NOT NULL
+    bookId INT NOT NULL,
+    userId INT NOT NULL,
+    rating INT NOT NULL,
+    PRIMARY KEY (bookId, userId),
+    CONSTRAINT ck_ratings_range CHECK (rating BETWEEN 1 AND 5),
+    CONSTRAINT fk_ratings_book FOREIGN KEY (bookId) REFERENCES book (id) ON DELETE CASCADE,
+    CONSTRAINT fk_ratings_user FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
 );
 
-create table ratings
+CREATE TABLE comments
 (
-    bookId int NOT NULL,
-    userId int NOT NULL,
-    rating int NOT NULL
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    bookId  INT          NOT NULL,
+    userId  INT          NOT NULL,
+    comment VARCHAR(500) NOT NULL,
+    CONSTRAINT fk_comments_book FOREIGN KEY (bookId) REFERENCES book (id) ON DELETE CASCADE,
+    CONSTRAINT fk_comments_user FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
 );
 
-create table comments
+CREATE TABLE roles
 (
-    id      int          NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    bookId  int          NOT NULL,
-    userId  int          NOT NULL,
-    comment varchar(500) NOT NULL,
-    PRIMARY KEY (ID)
+    id   INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
-create table user_to_roles
+CREATE TABLE permissions
 (
-    userId int NOT NULL,
-    roleId int NOT NULL
+    id   INT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
-create table roles
+CREATE TABLE user_to_roles
 (
-    id   int          NOT NULL,
-    name varchar(255) NOT NULL,
-    PRIMARY KEY (ID)
+    userId INT NOT NULL,
+    roleId INT NOT NULL,
+    PRIMARY KEY (userId, roleId),
+    CONSTRAINT fk_user_to_roles_user FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_to_roles_role FOREIGN KEY (roleId) REFERENCES roles (id) ON DELETE CASCADE
 );
 
-create table permissions
+CREATE TABLE role_to_permissions
 (
-    id   int          NOT NULL,
-    name varchar(255) NOT NULL,
-    PRIMARY KEY (ID)
-);
-
-create table role_to_permissions
-(
-    roleId       int NOT NULL,
-    permissionId int NOT NULL
+    roleId       INT NOT NULL,
+    permissionId INT NOT NULL,
+    PRIMARY KEY (roleId, permissionId),
+    CONSTRAINT fk_role_to_permissions_role FOREIGN KEY (roleId) REFERENCES roles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_role_to_permissions_permission FOREIGN KEY (permissionId) REFERENCES permissions (id) ON DELETE CASCADE
 );

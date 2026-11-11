@@ -36,7 +36,7 @@ public class VoucherController {
     public String showAddVoucher(Model model) {
         List<Voucher> voucherList = voucherRepository.getAll();
         model.addAttribute("vouchers", voucherList);
-        return "/new-voucher";
+        return "new-voucher";
     }
 
     @PostMapping("/new-voucher")

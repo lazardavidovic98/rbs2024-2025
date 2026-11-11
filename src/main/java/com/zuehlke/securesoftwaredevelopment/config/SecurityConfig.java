@@ -1,60 +1,49 @@
 package com.zuehlke.securesoftwaredevelopment.config;
 
-import com.zuehlke.securesoftwaredevelopment.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
+@Configuration
 @EnableWebSecurity
-@EnableGlobalMethodSecurity(prePostEnabled = true)
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+@EnableMethodSecurity
+public class SecurityConfig {
 
     private final DatabaseAuthenticationProvider databaseAuthenticationProvider;
-    private final UserDetailsServiceImpl userDetailsService;
 
-    public SecurityConfig(DatabaseAuthenticationProvider databaseAuthenticationProvider, UserDetailsServiceImpl userDetailsService) {
+    public SecurityConfig(DatabaseAuthenticationProvider databaseAuthenticationProvider) {
         this.databaseAuthenticationProvider = databaseAuthenticationProvider;
-        this.userDetailsService = userDetailsService;
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf()
-                .csrfTokenRepository(org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .and()
-                .authorizeRequests()
-                .antMatchers("/login").permitAll()
-                .antMatchers("/**").authenticated()
-                .and()
-                .formLogin()
-                .authenticationDetailsSource(request -> request.getParameter("totp"))
-                .loginPage("/login")
-                .loginProcessingUrl("/perform-login")
-                .defaultSuccessUrl("/books")
-                .failureUrl("/login?error")
-                .and()
-                .logout()
-                .logoutSuccessUrl("/login")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID");
-
-        // We need this one in order to access h2-console
-        http.headers().frameOptions().sameOrigin();
-    }
-
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) {
-        auth.authenticationProvider(databaseAuthenticationProvider);
+                .authenticationProvider(databaseAuthenticationProvider)
+                // The token is mirrored into a JS-readable cookie so fetch() calls can send it back as a header
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .authorizeRequests(auth -> auth
+                        .antMatchers("/login", "/css/**", "/js/**", "/images/**").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/perform-login")
+                        .defaultSuccessUrl("/books", true)
+                        .failureUrl("/login?error"))
+                .logout(logout -> logout
+                        .logoutSuccessUrl("/login?logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID"))
+                .headers(headers -> headers.frameOptions().deny());
+        return http.build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new PlainTextPasswordEncoder();
     }
-
 }

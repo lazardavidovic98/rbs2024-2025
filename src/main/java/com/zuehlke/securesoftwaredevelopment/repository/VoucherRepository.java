@@ -29,7 +29,7 @@ public class VoucherRepository {
             return;
         }
         
-        String query = "INSERT INTO voucher(code, value) VALUES(?, ?)";
+        String query = "INSERT INTO voucher(code, discount) VALUES(?, ?)";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(query);
         ) {
@@ -109,7 +109,7 @@ public class VoucherRepository {
 
     public List<Voucher> getAll() {
         List<Voucher> vouchers = new ArrayList<>();
-        String query = "SELECT id, code, value FROM voucher";
+        String query = "SELECT id, code, discount FROM voucher";
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement();
              ResultSet rs = statement.executeQuery(query)) {
