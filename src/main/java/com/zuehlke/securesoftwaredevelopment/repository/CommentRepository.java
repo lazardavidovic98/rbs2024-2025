@@ -2,55 +2,40 @@ package com.zuehlke.securesoftwaredevelopment.repository;
 
 import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
 import com.zuehlke.securesoftwaredevelopment.domain.Comment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.zuehlke.securesoftwaredevelopment.domain.ViewComment;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 public class CommentRepository {
-    private static final Logger LOG = LoggerFactory.getLogger(CommentRepository.class);
+
     private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(CommentRepository.class);
 
-    private DataSource dataSource;
+    private final JdbcTemplate jdbc;
 
-    public CommentRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public CommentRepository(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
     public void create(Comment comment) {
-        String query = "insert into comments(bookId, userId, comment) values (?, ?, ?)";
-
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(query);
-        ) {
-            statement.setInt(1, comment.getBookId());
-            statement.setInt(2, comment.getUserId());
-            statement.setString(3, comment.getComment());
-            statement.executeUpdate();
-
-            AUDIT_LOGGER.audit("Successfully created comment for book ID: " + comment.getBookId() + " by user ID: " + comment.getUserId());
-        } catch (SQLException e) {
-            LOG.warn("Failed to create comment for book: {} by user: {}", comment.getBookId(), comment.getUserId(), e);
-        }
+        jdbc.update("INSERT INTO comments(bookId, userId, comment) VALUES (?, ?, ?)",
+                comment.getBookId(), comment.getUserId(), comment.getComment());
+        AUDIT_LOGGER.audit("Added comment to book id=" + comment.getBookId());
     }
 
-    public List<Comment> getAll(String bookId) {
-        List<Comment> commentList = new ArrayList<>();
-        String query = "SELECT bookId, userId, comment FROM comments WHERE bookId = " + bookId;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                commentList.add(new Comment(rs.getInt(1), rs.getInt(2), rs.getString(3)));
-            }
-        } catch (SQLException e) {
-            LOG.warn("Failed to retrieve comments for book: {}", bookId, e);
-        }
-        return commentList;
+    /**
+     * Comments of a book together with the author's display name, oldest first.
+     */
+    public List<ViewComment> getAllForBook(int bookId) {
+        String sql = "SELECT p.firstName, p.lastName, c.comment" +
+                " FROM comments c LEFT JOIN persons p ON p.id = c.userId" +
+                " WHERE c.bookId = ? ORDER BY c.id";
+        return jdbc.query(sql, (rs, rowNum) -> {
+            String firstName = rs.getString("firstName");
+            String author = firstName == null ? "Deleted user" : firstName + " " + rs.getString("lastName");
+            return new ViewComment(author, rs.getString("comment"));
+        }, bookId);
     }
 }

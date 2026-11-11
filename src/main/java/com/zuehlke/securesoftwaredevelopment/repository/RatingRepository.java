@@ -2,78 +2,52 @@ package com.zuehlke.securesoftwaredevelopment.repository;
 
 import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
 import com.zuehlke.securesoftwaredevelopment.config.Entity;
-import com.zuehlke.securesoftwaredevelopment.domain.Comment;
 import com.zuehlke.securesoftwaredevelopment.domain.Rating;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 public class RatingRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RatingRepository.class);
     private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(RatingRepository.class);
 
-    private DataSource dataSource;
+    private final JdbcTemplate jdbc;
 
-    public RatingRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public RatingRepository(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
+    /**
+     * Inserts the user's rating of a book or replaces the previous one.
+     */
+    @Transactional
     public void createOrUpdate(Rating rating) {
-        String query = "SELECT bookId, userId, rating FROM ratings WHERE bookId = " + rating.getBookId() + " AND userID = " + rating.getUserId();
-        String query2 = "update ratings SET rating = ? WHERE bookId = ? AND userId = ?";
-        String query3 = "insert into ratings(bookId, userId, rating) values (?, ?, ?)";
+        List<Integer> previous = jdbc.queryForList(
+                "SELECT rating FROM ratings WHERE bookId = ? AND userId = ?",
+                Integer.class, rating.getBookId(), rating.getUserId());
 
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)
-        ) {
-            if (rs.next()) {
-                Rating ratingFromDb = new Rating(rs.getInt(1), rs.getInt(2), rs.getInt(3));
-                PreparedStatement preparedStatement = connection.prepareStatement(query2);
-                preparedStatement.setInt(1, rating.getRating());
-                preparedStatement.setInt(2, rating.getBookId());
-                preparedStatement.setInt(3, rating.getUserId());
-                preparedStatement.executeUpdate();
-
-                AUDIT_LOGGER.auditChange(new Entity(
-                    "rating.update",
-                    String.valueOf(rating.getBookId()),
-                    "bookId=" + ratingFromDb.getBookId() + ";userId=" + ratingFromDb.getUserId() + ";rating=" + ratingFromDb.getRating(),
-                    "bookId=" + rating.getBookId() + ";userId=" + rating.getUserId() + ";rating=" + rating.getRating()
-                ));
-            } else {
-                PreparedStatement preparedStatement = connection.prepareStatement(query3);
-                preparedStatement.setInt(1, rating.getBookId());
-                preparedStatement.setInt(2, rating.getUserId());
-                preparedStatement.setInt(3, rating.getRating());
-                preparedStatement.executeUpdate();
-
-                AUDIT_LOGGER.audit("Successfully created rating for book: " + rating.getBookId());
-            }
-        } catch (SQLException e) {
-            LOG.warn("Failed to create or update rating for book {}", rating.getBookId(), e);
+        if (previous.isEmpty()) {
+            jdbc.update("INSERT INTO ratings(bookId, userId, rating) VALUES (?, ?, ?)",
+                    rating.getBookId(), rating.getUserId(), rating.getRating());
+            AUDIT_LOGGER.audit("Rated book id=" + rating.getBookId() + " with " + rating.getRating());
+            return;
         }
+
+        jdbc.update("UPDATE ratings SET rating = ? WHERE bookId = ? AND userId = ?",
+                rating.getRating(), rating.getBookId(), rating.getUserId());
+        AUDIT_LOGGER.auditChange(new Entity(
+                "rating.update",
+                "bookId=" + rating.getBookId() + ";userId=" + rating.getUserId(),
+                "rating=" + previous.get(0),
+                "rating=" + rating.getRating()));
     }
 
-    public List<Rating> getAll(String bookId) {
-        List<Rating> ratingList = new ArrayList<>();
-        String query = "SELECT bookId, userId, rating FROM ratings WHERE bookId = " + bookId;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                ratingList.add(new Rating(rs.getInt(1), rs.getInt(2), rs.getInt(3)));
-            }
-        } catch (SQLException e) {
-            LOG.warn("Failed to get all ratings for book {}", bookId, e);
-        }
-        return ratingList;
+    public List<Rating> getAll(int bookId) {
+        return jdbc.query("SELECT bookId, userId, rating FROM ratings WHERE bookId = ?",
+                (rs, rowNum) -> new Rating(rs.getInt("bookId"), rs.getInt("userId"), rs.getInt("rating")),
+                bookId);
     }
 }

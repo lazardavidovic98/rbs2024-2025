@@ -3,112 +3,74 @@ package com.zuehlke.securesoftwaredevelopment.repository;
 import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
 import com.zuehlke.securesoftwaredevelopment.config.Entity;
 import com.zuehlke.securesoftwaredevelopment.domain.Person;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import javax.sql.DataSource;
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class PersonRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PersonRepository.class);
     private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(PersonRepository.class);
 
-    private DataSource dataSource;
+    private static final String PERSON_COLUMNS = "id, firstName, lastName, email";
 
-    public PersonRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
+    private static final RowMapper<Person> PERSON_MAPPER = (rs, rowNum) -> new Person(
+            String.valueOf(rs.getInt("id")),
+            rs.getString("firstName"),
+            rs.getString("lastName"),
+            rs.getString("email"));
+
+    private final JdbcTemplate jdbc;
+
+    public PersonRepository(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
     public List<Person> getAll() {
-        List<Person> personList = new ArrayList<>();
-        String query = "SELECT id, firstName, lastName, email FROM persons";
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                personList.add(createPersonFromResultSet(rs));
-            }
-        } catch (SQLException e) {
-            LOG.warn("Error retrieving all persons: {}", e.getMessage());
-        }
-        return personList;
+        return jdbc.query("SELECT " + PERSON_COLUMNS + " FROM persons ORDER BY id", PERSON_MAPPER);
     }
 
-    public List<Person> search(String searchTerm) throws SQLException {
-        List<Person> personList = new ArrayList<>();
-        String query = "SELECT id, firstName, lastName, email FROM persons WHERE UPPER(firstName) like UPPER('%" + searchTerm + "%')" +
-                " OR UPPER(lastName) like UPPER('%" + searchTerm + "%')";
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                personList.add(createPersonFromResultSet(rs));
-            }
-        }
-        return personList;
+    /**
+     * Case-insensitive search by first or last name.
+     */
+    public List<Person> search(String searchTerm) {
+        String pattern = SqlUtils.containsPattern(searchTerm);
+        String sql = "SELECT " + PERSON_COLUMNS + " FROM persons" +
+                " WHERE UPPER(firstName) LIKE ? ESCAPE '\\' OR UPPER(lastName) LIKE ? ESCAPE '\\'" +
+                " ORDER BY id";
+        return jdbc.query(sql, PERSON_MAPPER, pattern, pattern);
     }
 
-    public Person get(String personId) {
-        String query = "SELECT id, firstName, lastName, email FROM persons WHERE id = " + personId;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                return createPersonFromResultSet(rs);
-            }
-        } catch (SQLException e) {
-            LOG.warn("Error retrieving person with ID {}: {}", personId, e.getMessage());
-        }
-
-        return null;
+    public Optional<Person> get(int personId) {
+        List<Person> persons = jdbc.query("SELECT " + PERSON_COLUMNS + " FROM persons WHERE id = ?", PERSON_MAPPER, personId);
+        return persons.stream().findFirst();
     }
 
-    public void delete(int personId) {
-        String query = "DELETE FROM persons WHERE id = " + personId;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-        ) {
-            statement.executeUpdate(query);
-            AUDIT_LOGGER.audit("Successfully deleted person with ID " + personId);
-        } catch (SQLException e) {
-            LOG.warn("Error deleting person with ID {}: {}", personId, e.getMessage());
-        }
-    }
+    /**
+     * Updates the profile and writes a before/after audit record.
+     */
+    public void update(Person update) {
+        int id = Integer.parseInt(update.getId());
+        Person before = get(id).orElseThrow(() -> new IllegalArgumentException("Unknown person " + id));
 
-    private Person createPersonFromResultSet(ResultSet rs) throws SQLException {
-        int id = rs.getInt(1);
-        String firstName = rs.getString(2);
-        String lastName = rs.getString(3);
-        String email = rs.getString(4);
-        return new Person("" + id, firstName, lastName, email);
-    }
+        String firstName = update.getFirstName() != null ? update.getFirstName() : before.getFirstName();
+        String lastName = update.getLastName() != null ? update.getLastName() : before.getLastName();
+        String email = update.getEmail() != null ? update.getEmail() : before.getEmail();
 
-    public void update(Person personUpdate) {
-        Person personFromDb = get(personUpdate.getId());
-        String query = "UPDATE persons SET firstName = ?, lastName = '" + personUpdate.getLastName() + "', email = ? where id = " + personUpdate.getId();
+        jdbc.update("UPDATE persons SET firstName = ?, lastName = ?, email = ? WHERE id = ?",
+                firstName, lastName, email, id);
 
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(query);
-        ) {
-            String firstName = personUpdate.getFirstName() != null ? personUpdate.getFirstName() : personFromDb.getFirstName();
-            String email = personUpdate.getEmail() != null ? personUpdate.getEmail() : personFromDb.getEmail();
-            statement.setString(1, firstName);
-            statement.setString(2, email);
-            statement.executeUpdate();
-
-            AUDIT_LOGGER.auditChange(new Entity(
+        AUDIT_LOGGER.auditChange(new Entity(
                 "person.update",
-                personUpdate.getId(),
-                "firstName=" + personFromDb.getFirstName() + ";lastName=" + personFromDb.getLastName() + ";email=" + personFromDb.getEmail(),
-                "firstName=" + firstName + ";lastName=" + personUpdate.getLastName() + ";email=" + email
-            ));
-        } catch (SQLException e) {
-            LOG.warn("Failed to update a person {}", personUpdate.getId(), e);
-        }
+                String.valueOf(id),
+                describe(before.getFirstName(), before.getLastName(), before.getEmail()),
+                describe(firstName, lastName, email)));
+    }
+
+    private static String describe(String firstName, String lastName, String email) {
+        return "firstName=" + firstName + ";lastName=" + lastName + ";email=" + email;
     }
 }

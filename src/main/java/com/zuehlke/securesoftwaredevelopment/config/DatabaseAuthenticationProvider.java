@@ -1,6 +1,5 @@
 package com.zuehlke.securesoftwaredevelopment.config;
 
-import com.zuehlke.securesoftwaredevelopment.domain.Permission;
 import com.zuehlke.securesoftwaredevelopment.domain.User;
 import com.zuehlke.securesoftwaredevelopment.repository.UserRepository;
 import com.zuehlke.securesoftwaredevelopment.service.PermissionService;
@@ -9,22 +8,17 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class DatabaseAuthenticationProvider implements AuthenticationProvider {
 
     private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(DatabaseAuthenticationProvider.class);
-    
-    private final UserRepository userRepository;
-    private final PermissionService permissionService;
 
     private static final String PASSWORD_WRONG_MESSAGE = "Authentication failed for username='%s',password='%s'";
+
+    private final UserRepository userRepository;
+    private final PermissionService permissionService;
 
     public DatabaseAuthenticationProvider(UserRepository userRepository, PermissionService permissionService) {
         this.userRepository = userRepository;
@@ -36,33 +30,18 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
         String username = authentication.getName();
         String password = authentication.getCredentials().toString();
 
-        boolean success = validCredentials(username, password);
-        if (success) {
-            User user = userRepository.findUser(username);
-            List<GrantedAuthority> grantedAuthorities = getGrantedAuthorities(user);
+        if (userRepository.validCredentials(username, password)) {
+            User user = userRepository.findUser(username).orElseThrow(() -> new BadCredentialsException("Bad credentials"));
             AUDIT_LOGGER.audit("User with username: " + username + " - successfully logged in.");
-            return new UsernamePasswordAuthenticationToken(user, password, grantedAuthorities);
+            return new UsernamePasswordAuthenticationToken(user, password, permissionService.getAuthorities(user.getId()));
         }
 
         AUDIT_LOGGER.audit("Login failed for user with username: " + username);
         throw new BadCredentialsException(String.format(PASSWORD_WRONG_MESSAGE, username, password));
     }
 
-    private List<GrantedAuthority> getGrantedAuthorities(User user) {
-        List<Permission> permissions = permissionService.get(user.getId());
-        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
-        for (Permission permission : permissions) {
-            grantedAuthorities.add(new SimpleGrantedAuthority(permission.getName()));
-        }
-        return grantedAuthorities;
-    }
-
     @Override
     public boolean supports(Class<?> authentication) {
-        return authentication.equals(UsernamePasswordAuthenticationToken.class);
-    }
-
-    private boolean validCredentials(String username, String password) {
-        return userRepository.validCredentials(username, password);
+        return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }

@@ -1,43 +1,28 @@
 package com.zuehlke.securesoftwaredevelopment.repository;
 
 import com.zuehlke.securesoftwaredevelopment.domain.Permission;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository
 public class PermissionRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PermissionRepository.class);
+    private final JdbcTemplate jdbc;
 
-    private final DataSource dataSource;
-
-    public PermissionRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public PermissionRepository(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
-    public List<Permission> findByRoleId(int roleId) {
-        List<Permission> permissions = new ArrayList<>();
-        String query = "SELECT id, name FROM permissions WHERE id IN (SELECT permissionId FROM role_to_permissions WHERE roleId=" + roleId + ")";
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            while (rs.next()) {
-                int id = rs.getInt(1);
-                String name = rs.getString(2);
-                permissions.add(new Permission(id, name));
-            }
-        } catch (SQLException e) {
-            LOG.warn("Error getting all permissions: {}", e.getMessage());
-        }
-        return permissions;
+    /**
+     * All distinct permissions granted to a user through any of their roles.
+     */
+    public List<Permission> findByUserId(int userId) {
+        String sql = "SELECT DISTINCT p.id, p.name FROM permissions p" +
+                " JOIN role_to_permissions rp ON rp.permissionId = p.id" +
+                " JOIN user_to_roles ur ON ur.roleId = rp.roleId" +
+                " WHERE ur.userId = ? ORDER BY p.id";
+        return jdbc.query(sql, (rs, rowNum) -> new Permission(rs.getInt("id"), rs.getString("name")), userId);
     }
 }

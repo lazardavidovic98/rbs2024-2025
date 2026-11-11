@@ -1,89 +1,58 @@
 package com.zuehlke.securesoftwaredevelopment.repository;
 
+import com.zuehlke.securesoftwaredevelopment.config.AuditLogger;
 import com.zuehlke.securesoftwaredevelopment.domain.User;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import javax.sql.DataSource;
-import java.sql.*;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class UserRepository {
 
-    private static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
+    private static final AuditLogger AUDIT_LOGGER = AuditLogger.getAuditLogger(UserRepository.class);
 
-    private DataSource dataSource;
+    private static final RowMapper<User> USER_MAPPER = (rs, rowNum) -> new User(
+            rs.getInt("id"),
+            rs.getString("username"),
+            rs.getString("password"));
 
-    public UserRepository(DataSource dataSource) {
-        this.dataSource = dataSource;
+    private final JdbcTemplate jdbc;
+
+    public UserRepository(JdbcTemplate jdbc) {
+        this.jdbc = jdbc;
     }
 
-    public User findUser(String username) {
-        String query = "SELECT id, username, password FROM users WHERE username='" + username + "'";
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            if (rs.next()) {
-                int id = rs.getInt(1);
-                String username1 = rs.getString(2);
-                String password = rs.getString(3);
-                return new User(id, username1, password);
-            }
-        } catch (SQLException e) {
-            LOG.warn("Failed to find user {}", username, e);
-        }
-        return null;
+    public Optional<User> findUser(String username) {
+        List<User> users = jdbc.query("SELECT id, username, password FROM users WHERE username = ?", USER_MAPPER, username);
+        return users.stream().findFirst();
     }
 
-    public String findUsername(int id) {
-        String query = "SELECT username FROM users WHERE id=" + id;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            if (rs.next()) {
-                String username = rs.getString(1);
-                return username;
-            }
-        } catch (SQLException e) {
-            LOG.warn("Failed to find username for user {}", id, e);
-        }
-        return null;
+    public Optional<String> findUsername(int id) {
+        return jdbc.queryForList("SELECT username FROM users WHERE id = ?", String.class, id).stream().findFirst();
     }
 
+    /**
+     * @throws org.springframework.dao.DuplicateKeyException if the username is already taken
+     */
     public void updateUsername(int id, String username) {
-        String query = "UPDATE users SET username = ? WHERE id = " + id;
-
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(query);
-        ) {
-            statement.setString(1, username);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            LOG.warn("Failed to update username for user {}", id, e);
-        }
+        jdbc.update("UPDATE users SET username = ? WHERE id = ?", username, id);
+        AUDIT_LOGGER.audit("Changed username of user id=" + id);
     }
 
     public boolean validCredentials(String username, String password) {
-        String query = "SELECT username FROM users WHERE username='" + username + "' AND password='" + password + "'";
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-             ResultSet rs = statement.executeQuery(query)) {
-            return rs.next();
-        } catch (SQLException e) {
-            LOG.warn("Failed to validate credentials for user {}", username, e);
-        }
-        return false;
+        Integer matches = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE username = ? AND password = ?", Integer.class, username, password);
+        return matches != null && matches == 1;
     }
 
+    /**
+     * Deletes the account; profile, roles, ratings and comments go with it (ON DELETE CASCADE).
+     */
     public void delete(int userId) {
-        String query = "DELETE FROM users WHERE id = " + userId;
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement();
-        ) {
-            statement.executeUpdate(query);
-        } catch (SQLException e) {
-            LOG.warn("Failed to delete user {}", userId, e);
-        }
+        jdbc.update("DELETE FROM users WHERE id = ?", userId);
+        AUDIT_LOGGER.audit("Deleted user id=" + userId);
     }
 }
