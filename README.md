@@ -121,20 +121,31 @@ Static analysis with SonarQube (a local SonarQube server, e.g. the `sonarqube` D
 
 ## Project structure
 
-```
-src/main/java/com/zuehlke/securesoftwaredevelopment
-├── config/        SecurityConfig, authentication provider, password encoder, AuditLogger, SecurityUtil
-├── controller/    Books, comments, ratings, persons, vouchers, login
-├── domain/        Plain domain objects
-├── repository/    JdbcTemplate repositories (parameterized SQL only)
-└── service/       Permission resolution, login throttling
-src/main/resources
-├── schema.sql, data.sql   Database schema and demo data
-├── logback-spring.xml     Console + separate audit log
-├── templates/             Thymeleaf pages
-└── static/                JavaScript, CSS, images (no inline scripts)
-csrf-exploit/              Attacker page for the CSRF demo
-```
+
+<!-- project-tree:start -->
+<p>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025" title="rbs2024-2025"><img src=".github/readme-tree/00.svg" alt="rbs2024-2025" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment" title="src/main/java/com/zuehlke/securesoftwaredevelopment/"><img src=".github/readme-tree/01.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/src/main/java/com/zuehlke/securesoftwaredevelopment/SecureSoftwareDevelopmentApplication.java" title="src/main/java/com/zuehlke/securesoftwaredevelopment/SecureSoftwareDevelopmentApplication.java"><img src=".github/readme-tree/02.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/SecureSoftwareDevelopmentApplication.java — entry point" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment/config" title="src/main/java/com/zuehlke/securesoftwaredevelopment/config/"><img src=".github/readme-tree/03.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/config/ — SecurityConfig, auth provider, AuditLogger" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment/controller" title="src/main/java/com/zuehlke/securesoftwaredevelopment/controller/"><img src=".github/readme-tree/04.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/controller/ — books, comments, ratings, persons, vouchers" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment/domain" title="src/main/java/com/zuehlke/securesoftwaredevelopment/domain/"><img src=".github/readme-tree/05.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/domain/ — plain domain objects" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment/repository" title="src/main/java/com/zuehlke/securesoftwaredevelopment/repository/"><img src=".github/readme-tree/06.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/repository/ — JdbcTemplate, parameterized SQL only" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/java/com/zuehlke/securesoftwaredevelopment/service" title="src/main/java/com/zuehlke/securesoftwaredevelopment/service/"><img src=".github/readme-tree/07.svg" alt="src/main/java/com/zuehlke/securesoftwaredevelopment/service/ — permission resolution, login throttling" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/resources" title="src/main/resources/"><img src=".github/readme-tree/08.svg" alt="src/main/resources/" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/src/main/resources/schema.sql" title="src/main/resources/schema.sql"><img src=".github/readme-tree/09.svg" alt="src/main/resources/schema.sql — database schema" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/src/main/resources/data.sql" title="src/main/resources/data.sql"><img src=".github/readme-tree/10.svg" alt="src/main/resources/data.sql — demo data" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/src/main/resources/logback-spring.xml" title="src/main/resources/logback-spring.xml"><img src=".github/readme-tree/11.svg" alt="src/main/resources/logback-spring.xml — console + separate audit log" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/resources/templates" title="src/main/resources/templates/"><img src=".github/readme-tree/12.svg" alt="src/main/resources/templates/ — Thymeleaf pages" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/main/resources/static" title="src/main/resources/static/"><img src=".github/readme-tree/13.svg" alt="src/main/resources/static/ — JavaScript, CSS, images (no inline scripts)" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/src/main/resources/application.properties" title="src/main/resources/application.properties"><img src=".github/readme-tree/14.svg" alt="src/main/resources/application.properties — app settings" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/src/test/java" title="src/test/java/"><img src=".github/readme-tree/15.svg" alt="src/test/java/ — Spring context test" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/tree/main/csrf-exploit" title="csrf-exploit/"><img src=".github/readme-tree/16.svg" alt="csrf-exploit/ — attacker page for the CSRF demo" align="top"></a><br>
+<a href="https://github.com/LazarDavidovic98/rbs2024-2025/blob/main/pom.xml" title="pom.xml"><img src=".github/readme-tree/17.svg" alt="pom.xml — Maven build" align="top"></a><br>
+</p>
+
+<sub>Every row is a link to that file or folder on GitHub. Purple: folders, green: source code, grey: configuration, data and docs.</sub>
+<!-- project-tree:end -->
 
 ## Tech stack
 
