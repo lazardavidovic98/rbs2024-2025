@@ -8,6 +8,10 @@ public class Rating {
 
     private int rating;
 
+    /** Used by Jackson when a rating is posted as JSON. */
+    public Rating() {
+    }
+
     public Rating(int bookId, int userId, int rating) {
         this.bookId = bookId;
         this.userId = userId;

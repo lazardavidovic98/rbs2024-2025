@@ -1,0 +1,46 @@
+/* Styles live here instead of inline attributes so the Content-Security-Policy can forbid inline styles. */
+
+.app-background {
+    background-image: url('/images/mari-potter-Zh0mcQuw_EQ-unsplash.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: center;
+}
+
+.content-panel {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 0.5rem;
+}
+
+.footer-note {
+    color: #f8f9fa;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.login-card {
+    width: 340px;
+}
+
+.book-description {
+    text-align: justify;
+    display: block;
+}
+
+.comment-body {
+    white-space: pre-wrap;
+    height: auto;
+}
+
+.field-error {
+    display: none;
+}
+
+.field-error.visible {
+    display: block;
+}
+
+#qrcode img,
+#qrcode canvas {
+    margin: 0 auto;
+}

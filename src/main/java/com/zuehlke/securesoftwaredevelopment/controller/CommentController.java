@@ -3,49 +3,40 @@ package com.zuehlke.securesoftwaredevelopment.controller;
 import com.zuehlke.securesoftwaredevelopment.domain.Comment;
 import com.zuehlke.securesoftwaredevelopment.domain.User;
 import com.zuehlke.securesoftwaredevelopment.repository.CommentRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.util.HtmlUtils;
 
 @Controller
 public class CommentController {
-    private static final Logger LOG = LoggerFactory.getLogger(CommentController.class);
 
-    private CommentRepository commentRepository;
+    static final int MAX_COMMENT_LENGTH = 500;
+
+    private final CommentRepository commentRepository;
 
     public CommentController(CommentRepository commentRepository) {
         this.commentRepository = commentRepository;
     }
 
-    // Originalni endpoint za JSON podatke (za postojeću funkcionalnost)
+    /**
+     * Stores the comment exactly as typed. XSS is prevented by encoding on output (Thymeleaf th:text,
+     * textContent in JavaScript) and by the Content-Security-Policy, not by HTML-escaping on input,
+     * which used to double-encode comments such as "Tom &amp; Jerry".
+     */
     @PostMapping(value = "/comments", consumes = "application/json")
     @PreAuthorize("hasAuthority('ADD_COMMENT')")
-    public ResponseEntity<Void> createComment(@RequestBody Comment comment, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        comment.setUserId(user.getId());
-        
-        // Validacija unosa 
-        if (comment.getComment() == null || comment.getComment().trim().isEmpty()) {
+    public ResponseEntity<Void> createComment(@RequestBody Comment comment, @AuthenticationPrincipal User user) {
+        String text = comment.getComment() == null ? "" : comment.getComment().trim();
+        if (text.isEmpty() || text.length() > MAX_COMMENT_LENGTH) {
             return ResponseEntity.badRequest().build();
         }
-        
-        // Sanitizacija inputa za zastitu od xss-a
-        String sanitizedComment = HtmlUtils.htmlEscape(comment.getComment().trim());
-        comment.setComment(sanitizedComment);
-        
-        if (sanitizedComment.length() > 1000) {
-            return ResponseEntity.badRequest().build();
-        }
-        
-        commentRepository.create(comment);
 
+        comment.setComment(text);
+        comment.setUserId(user.getId());
+        commentRepository.create(comment);
         return ResponseEntity.noContent().build();
     }
-
 }

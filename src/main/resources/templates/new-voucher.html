@@ -1,24 +1,28 @@
 <!doctype html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-      layout:decorate="~{layout}" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+      layout:decorate="~{layout}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Insecure Book</title>
+    <title>New voucher</title>
 </head>
 <body>
 <div layout:fragment="content">
     <h1>New voucher</h1>
-    <form id="voucherForm" class="col-5" method="POST" th:action="@{/new-voucher}">
+    <div class="alert alert-danger" th:if="${param.invalid}">
+        The voucher was not created: the code must look like 1234username1234 and the discount must be between 1 and 95.
+    </div>
+    <div class="alert alert-danger" th:if="${param.duplicate}">A voucher with this code already exists.</div>
+    <form id="voucherForm" class="col-md-6 px-0 mb-4" method="POST" th:action="@{/new-voucher}">
         <div class="form-group">
             <label for="code">Code</label>
-            <input type="text" id="code" name="code" class="form-control"/>
-            <span id="codeError" style="color: red; display: none;">Invalid code format</span>
-            <label for="value">Value in percentage of discount:</label>
-            <input type="text" id="value" name="value" class="form-control"/>
-            <span id="valueError" style="color: red; display: none;">Value must be between 1 and 95</span>
+            <input type="text" id="code" name="code" class="form-control" maxlength="100" required>
+            <span id="codeError" class="text-danger small field-error">
+                Code must follow the format: 4 digits | username | 4 digits, for example 1234bruce1234.
+            </span>
+        </div>
+        <div class="form-group">
+            <label for="value">Discount (%)</label>
+            <input type="number" id="value" name="value" class="form-control" min="1" max="95" required>
+            <span id="valueError" class="text-danger small field-error">Value must be between 1 and 95.</span>
         </div>
         <button type="submit" class="btn btn-success">Create</button>
     </form>
@@ -27,10 +31,10 @@
         <tr>
             <th scope="col">#</th>
             <th scope="col">Code</th>
-            <th scope="col">Value in percentage of discount</th>
+            <th scope="col">Discount (%)</th>
         </tr>
         </thead>
-        <tbody id="booksTableContent">
+        <tbody>
         <tr th:each="voucher: ${vouchers}">
             <td th:text="${voucher.id}"></td>
             <td th:text="${voucher.code}"></td>
@@ -38,39 +42,9 @@
         </tr>
         </tbody>
     </table>
-    <script>
-        document.getElementById("voucherForm").addEventListener("submit", function (event) {
-            const code = document.getElementById("code").value;
-            const value = document.getElementById("value").value;
-
-            const codeRegex = /^\d\d\d\d[a-zA-Z]+\d\d\d\d$/;
-            let isValid = true;
-
-            if (!codeRegex.test(code)) {
-                const codeError = document.getElementById("codeError");
-                codeError.style.display = "block";
-                codeError.textContent = "Code must follow the format: 4 numbers | username | 4 numbers; For example: 1234admin1234";
-                isValid = false;
-            } else {
-                document.getElementById("codeError").style.display = "none";
-            }
-
-            // Validate the value
-            const numValue = parseInt(value, 10); // Convert value to integer
-            if (isNaN(numValue) || numValue < 1 || numValue > 95) {
-                const valueError = document.getElementById("valueError");
-                valueError.style.display = "block";
-                valueError.textContent = "Value must be between 1 and 95.";
-                isValid = false;
-            } else {
-                document.getElementById("valueError").style.display = "none";
-            }
-
-            if (!isValid) {
-                event.preventDefault();
-            }
-        });
-    </script>
 </div>
+<th:block layout:fragment="scripts">
+    <script th:src="@{/js/new-voucher.js}" defer></script>
+</th:block>
 </body>
 </html>

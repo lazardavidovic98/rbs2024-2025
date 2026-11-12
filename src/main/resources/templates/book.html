@@ -2,135 +2,61 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout}" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Book Details</title>
+    <title>Book details</title>
 </head>
 <body>
-<div layout:fragment="content">
-    <h1>Book details</h1>
+<div layout:fragment="content" id="book" th:data-book-id="${book.id}">
+    <h1 th:text="${book.name}">Book details</h1>
     <div class="row">
-        <form class="col-5">
-            <div class="form-group">
-                <b><label>Name:</label></b>
-                <label th:text="${book.name}"></label>
+        <div class="col-md-7">
+            <dl>
+                <dt>Author</dt>
+                <dd th:text="${book.author}"></dd>
+                <dt>Description</dt>
+                <dd class="book-description" th:text="${book.description}"></dd>
+                <dt>Price</dt>
+                <dd th:text="${#numbers.formatDecimal(book.price, 1, 2)}"></dd>
+                <dt>Tags</dt>
+                <dd>
+                    <span class="badge badge-secondary mr-1" th:each="tag: ${book.tags}" th:text="${tag.name}"></span>
+                </dd>
+                <dt>Rating</dt>
+                <dd th:text="${averageRating != null ? averageRating : 'Not rated yet'}"></dd>
+            </dl>
+
+            <div sec:authorize="hasAuthority('RATE_BOOK')" class="mb-3">
+                <p class="mb-1">My rating: <strong th:text="${userRating != null ? userRating : '-'}"></strong></p>
+                <div class="form-check form-check-inline" th:each="value : ${#numbers.sequence(1, 5)}">
+                    <input class="form-check-input" type="radio" name="rating" th:id="'rating' + ${value}"
+                           th:value="${value}">
+                    <label class="form-check-label" th:for="'rating' + ${value}" th:text="${value}"></label>
+                </div>
+                <button id="rateBook" type="button" class="btn btn-primary btn-sm">Rate</button>
             </div>
-            <div class="form-group">
-                <b><label>Author:</label></b>
-                <label th:text="${book.author}"></label>
-            </div>
-            <div class="form-group">
-                <b><label>Description:</label></b>
-                <label style="text-align: justify; display: block;" th:text="${book.description}"></label>
-            </div>
-            <div class="form-group">
-                <b><label>Price:</label></b>
-                <label th:text="${book.price}"></label>
-            </div>
-            <div class="form-group">
-                <b><label>Tags</label></b>
-                <table class="table">
-                    <tbody id="tagsTableContent">
-                    <tr th:each="tag: ${book.tags}">
-                        <td th:text="${tag.name}"></td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="form-group">
-                <label>Rating:</label>
-                <b><label th:text="${averageRating}"></label></b>
-            </div>
-            <div class="form-group" sec:authorize="hasAuthority('RATE_BOOK')">
-                <label>My rating:</label>
-                <b><label th:text="${userRating}"></label></b>
-            </div>
-            <div class="form-group" sec:authorize="hasAuthority('RATE_BOOK')">
-                <input type="radio" id="1" name="rating" value="1">
-                <label for="1">1</label>
-                <input type="radio" id="2" name="rating" value="2">
-                <label for="2">2</label>
-                <input type="radio" id="3" name="rating" value="3">
-                <label for="3">3</label>
-                <input type="radio" id="4" name="rating" value="4">
-                <label for="4">4</label>
-                <input type="radio" id="5" name="rating" value="5">
-                <label for="5">5</label>
-                <button id="rateBook" class="btn btn-primary mt-2">Rate</button>
-            </div>
-        </form>
+        </div>
     </div>
-    <div class="mt-2 mb-2" sec:authorize="hasAuthority('BUY_BOOK')">
-        <a th:href="@{'/buy-book/' + ${book.id}}">Buy book</a>
+
+    <div class="mb-3" sec:authorize="hasAuthority('BUY_BOOK')">
+        <a class="btn btn-success" th:href="@{/buy-book/{id}(id=${book.id})}">Buy book</a>
     </div>
-    <h2 id="book-comments">Book comments</h2>
-    <div class="form-group" th:each="comment,iter : ${comments}">
-        <b th:text="${comment.personName}"></b>
-        <div class="form-control" th:id="${iter.index}" th:text="${comment.comment}" disabled></div>
+
+    <h2 id="book-comments" class="h4">Comments</h2>
+    <p th:if="${#lists.isEmpty(comments)}" class="text-muted">No comments yet.</p>
+    <div class="form-group" th:each="comment : ${comments}">
+        <strong th:text="${comment.personName}"></strong>
+        <!-- th:text HTML-encodes the stored comment, so stored XSS payloads are rendered as plain text -->
+        <div class="form-control comment-body" th:text="${comment.comment}"></div>
     </div>
+
     <div class="form-group" sec:authorize="hasAuthority('ADD_COMMENT')">
         <label for="addComment">Add comment</label>
-        <textarea class="form-control" id="addComment" rows="3" placeholder="Comment..."></textarea>
-        <button id="createComment" class="btn btn-primary mt-2">Create comment</button>
+        <textarea class="form-control" id="addComment" rows="3" maxlength="500" placeholder="Comment..."></textarea>
+        <div class="text-danger small mt-1 field-error" id="commentError"></div>
+        <button id="createComment" type="button" class="btn btn-primary mt-2">Create comment</button>
     </div>
-
-    <script th:inline="javascript">
-        const bookID = [[${book.id}]];
-        
-        // Funkcija za uzimanje CSRF tokena iz cookie-a
-        function getCsrfToken() {
-            const value = `; ${document.cookie}`;
-            const delovi = value.split(`; xsrf_token=`);
-            if (delovi.length === 2) return decodeURIComponent(delovi.pop().split(';').shift());
-            return null;
-        }
-    </script>
-
-    <script>
-        window.addEventListener('load', function () {
-
-            document.getElementById("rateBook").addEventListener("click", function () {
-                const rating = document.querySelector('input[name="rating"]:checked').value;
-                const csrfToken = getCsrfToken();
-                
-                fetch('/ratings', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        bookId: bookID,
-                        rating: rating
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x_xsrf_token': csrfToken
-                    }
-                }).then(function () {
-                    console.log(window.location)
-                    window.location.reload();
-                });
-            });
-
-            document.getElementById("createComment").addEventListener("click", function () {
-                const comment = document.getElementById("addComment").value;
-                const csrfToken = getCsrfToken();
-
-                fetch('/comments', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        bookId: bookID,
-                        comment: comment
-                    }),
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x_xsrf_token': csrfToken
-                    }
-                }).then(function () {
-                    window.location.reload();
-                });
-            });
-        });
-    </script>
 </div>
+<th:block layout:fragment="scripts">
+    <script th:src="@{/js/book.js}" defer></script>
+</th:block>
 </body>
 </html>
