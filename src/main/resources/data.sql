@@ -1,10 +1,11 @@
 -- Identity columns are filled in insertion order, so the ids below are 1..n.
 
+-- Passwords are BCrypt hashes (cost 12). Demo credentials are listed in README.md.
 INSERT INTO users(username, password)
-VALUES ('bruce', 'wayne'),
-       ('peter', 'security_rules'),
-       ('tom', 'guessmeifyoucan'),
-       ('book', 'work');
+VALUES ('bruce', '$2a$12$qMl77ovjD1GO.jkVjAVbUeaut1uN7oJMFTwE0FEKb/jNkvt38UgLS'),
+       ('peter', '$2a$12$eX0Z3lS3p00JjLP71X9ZFuwx/6BK6yai/zOEbmHRYhUoYGNdBShSK'),
+       ('tom', '$2a$12$dtNzEJGKWe7kSrqq5zDaQumwEZ4FF/pmFQRN3rMgthNGCjTRvl7F2'),
+       ('book', '$2a$12$oM4hI3aYLfvbEjp8DuVz3.LSud2Q0wxmNle84uzaarRI6TS3.SSbq');
 
 INSERT INTO persons(id, firstName, lastName, email)
 VALUES (1, 'Bruce', 'Wayne', 'notBatman@gmail.com'),

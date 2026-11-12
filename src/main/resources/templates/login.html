@@ -2,24 +2,29 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Login</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in · Bookshop</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
           integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"
-            integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6"
-            crossorigin="anonymous"></script>
 </head>
-<body>
-<div class="d-flex flex-column justify-content-around align-items-center vh-100">
-    <form class="d-flex flex-column justify-content-around" style="height: 200px" method="POST" action="/perform-login">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <input type="text" class="form-control" name="username" placeholder="Username" required>
-        <input type="text" class="form-control" name="password" placeholder="Password" required>
-        <button type="submit" class="btn btn-primary">Submit</button>
+<body class="bg-light">
+<div class="d-flex justify-content-center align-items-center vh-100">
+    <form class="card shadow-sm p-4" style="width: 340px" method="POST" th:action="@{/perform-login}">
+        <h1 class="h4 mb-3 text-center">Bookshop</h1>
+
+        <div class="alert alert-danger py-2" th:if="${param.error}">Invalid username or password.</div>
+        <div class="alert alert-warning py-2" th:if="${param.locked}">
+            Too many failed attempts. The account is locked for a few minutes.
+        </div>
+        <div class="alert alert-success py-2" th:if="${param.logout}">You have been signed out.</div>
+
+        <label for="username" class="sr-only">Username</label>
+        <input type="text" class="form-control mb-2" id="username" name="username" placeholder="Username"
+               autocomplete="username" maxlength="255" required autofocus>
+        <label for="password" class="sr-only">Password</label>
+        <input type="password" class="form-control mb-3" id="password" name="password" placeholder="Password"
+               autocomplete="current-password" maxlength="255" required>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
     </form>
 </div>
 </body>

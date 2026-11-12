@@ -25,6 +25,9 @@ public class UserRepository {
         this.jdbc = jdbc;
     }
 
+    /**
+     * @return the user with their BCrypt password hash, used only for authentication
+     */
     public Optional<User> findUser(String username) {
         List<User> users = jdbc.query("SELECT id, username, password FROM users WHERE username = ?", USER_MAPPER, username);
         return users.stream().findFirst();
@@ -40,12 +43,6 @@ public class UserRepository {
     public void updateUsername(int id, String username) {
         jdbc.update("UPDATE users SET username = ? WHERE id = ?", username, id);
         AUDIT_LOGGER.audit("Changed username of user id=" + id);
-    }
-
-    public boolean validCredentials(String username, String password) {
-        Integer matches = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM users WHERE username = ? AND password = ?", Integer.class, username, password);
-        return matches != null && matches == 1;
     }
 
     /**
