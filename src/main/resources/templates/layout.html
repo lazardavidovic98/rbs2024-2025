@@ -18,7 +18,7 @@
 </head>
 <body class="app-background">
 <header>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <nav class="navbar navbar-expand navbar-light bg-light flex-wrap">
         <a class="navbar-brand" th:href="@{/books}">Bookshop</a>
         <ul class="navbar-nav mr-auto">
             <li class="nav-item" sec:authorize="hasAuthority('VIEW_BOOK_LIST')">
