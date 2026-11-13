@@ -5,6 +5,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+/**
+ * Object-level authorization rules used from {@code @PreAuthorize} expressions.
+ */
 @Component("securityUtil")
 public class SecurityUtil {
 
@@ -15,11 +18,8 @@ public class SecurityUtil {
 
     public boolean hasPermission(String permission) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getAuthorities() != null) {
-            return auth.getAuthorities().stream()
-                    .anyMatch(authority -> authority.getAuthority().equals(permission));
-        }
-        return false;
+        return auth != null && auth.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals(permission));
     }
 
     public boolean isOwner(int resourceUserId) {
@@ -27,12 +27,28 @@ public class SecurityUtil {
         return user != null && user.getId() == resourceUserId;
     }
 
+    /**
+     * Anyone may view their own profile; other profiles require VIEW_PERSON.
+     */
     public boolean canViewPerson(int personUserId) {
-        return hasPermission("VIEW_PERSON");
+        return isOwner(personUserId) || hasPermission("VIEW_PERSON");
     }
 
+    /**
+     * Users with UPDATE_PERSON may edit their own profile; editing others also requires VIEW_PERSONS_LIST.
+     */
     public boolean canUpdatePerson(int personUserId) {
-        return hasPermission("UPDATE_PERSON") && 
-               (hasPermission("VIEW_PERSONS_LIST") || isOwner(personUserId));
+        return hasPermission("UPDATE_PERSON") && (isOwner(personUserId) || hasPermission("VIEW_PERSONS_LIST"));
+    }
+
+    /**
+     * Same rule for ids coming from form fields; a non-numeric id is simply denied.
+     */
+    public boolean canUpdatePerson(String personUserId) {
+        try {
+            return canUpdatePerson(Integer.parseInt(personUserId));
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

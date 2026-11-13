@@ -7,6 +7,7 @@
 <body>
 <div layout:fragment="content">
     <h1>Profile</h1>
+    <div class="alert alert-danger" th:if="${param.duplicate}">This username is already taken.</div>
     <div class="row">
         <form method="POST" th:action="@{/update-person}" class="col-md-6">
             <div class="form-group">

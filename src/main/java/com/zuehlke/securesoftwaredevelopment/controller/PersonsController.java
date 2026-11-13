@@ -4,6 +4,7 @@ import com.zuehlke.securesoftwaredevelopment.domain.Person;
 import com.zuehlke.securesoftwaredevelopment.domain.User;
 import com.zuehlke.securesoftwaredevelopment.repository.PersonRepository;
 import com.zuehlke.securesoftwaredevelopment.repository.UserRepository;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.server.ResponseStatusException;
 
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @Controller
@@ -45,18 +48,31 @@ public class PersonsController {
 
     @DeleteMapping("/persons/{id}")
     @PreAuthorize("@securityUtil.canUpdatePerson(#id)")
-    public ResponseEntity<Void> deletePerson(@PathVariable int id) {
+    public ResponseEntity<Void> deletePerson(@PathVariable int id, @AuthenticationPrincipal User user,
+                                             HttpServletRequest request) throws ServletException {
         userRepository.delete(id);
+        if (user.getId() == id) {
+            // The account no longer exists, so its session must not stay valid
+            request.logout();
+        }
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/update-person")
-    @PreAuthorize("@securityUtil.canUpdatePerson(T(java.lang.Integer).parseInt(#person.id))")
-    public String updatePerson(Person person, String username) {
+    @PreAuthorize("@securityUtil.canUpdatePerson(#person.id)")
+    public String updatePerson(Person person, String username, @AuthenticationPrincipal User user) {
         int id = Integer.parseInt(person.getId());
+        String profileUrl = user.getId() == id ? "/myprofile" : "/persons/" + id;
+
         personRepository.update(person);
-        userRepository.updateUsername(id, username);
-        return "redirect:/persons/" + id;
+        if (username != null && !username.trim().isEmpty()) {
+            try {
+                userRepository.updateUsername(id, username.trim());
+            } catch (DuplicateKeyException e) {
+                return "redirect:" + profileUrl + "?duplicate";
+            }
+        }
+        return "redirect:" + profileUrl;
     }
 
     @GetMapping("/persons")

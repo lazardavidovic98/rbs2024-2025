@@ -8,39 +8,48 @@ import org.slf4j.MarkerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+/**
+ * Writes audit records (who did what) marked with the AUDIT marker; logback-spring.xml routes them
+ * to a separate logs/audit.log file.
+ */
 public class AuditLogger {
-    public static final Marker AUDIT = MarkerFactory.getMarker("AUDIT");
-    private final Logger LOG;
-    private Integer id;
 
-    public static AuditLogger getAuditLogger(Class<?> clazz) {
-        Logger logger = LoggerFactory.getLogger(clazz);
-        return new AuditLogger(logger);
-    }
+    public static final Marker AUDIT = MarkerFactory.getMarker("AUDIT");
+
+    private final Logger log;
 
     private AuditLogger(Logger log) {
-        this.LOG = log;
+        this.log = log;
+    }
+
+    public static AuditLogger getAuditLogger(Class<?> clazz) {
+        return new AuditLogger(LoggerFactory.getLogger(clazz));
     }
 
     public void audit(String description) {
-        Integer id = getId();
-        LOG.info(AUDIT, "userId={} - {}", id, description);
+        log.info(AUDIT, "userId={} - {}", currentUserId(), sanitize(description));
     }
 
     public void auditChange(Entity entity) {
-        audit("Change " + entity.toString());
+        audit("Change " + entity);
     }
 
-    private Integer getId() {
-        if (id == null) {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (authentication != null) {
-                User user = (User) authentication.getPrincipal();
-                if (user != null) {
-                    id = user.getId();
-                }
-            }
+    /**
+     * The user is resolved on every call. It used to be cached in a field of a logger shared by
+     * all requests, so every audit record carried the id of the first user who triggered it.
+     */
+    private static String currentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof User) {
+            return String.valueOf(((User) authentication.getPrincipal()).getId());
         }
-        return id;
+        return "anonymous";
+    }
+
+    /**
+     * Prevents log forging: a username such as "bob\n... userId=1 - Deleted user" cannot start a fake record.
+     */
+    private static String sanitize(String value) {
+        return value == null ? "" : value.replaceAll("[\\r\\n\\t]", "_");
     }
 }
